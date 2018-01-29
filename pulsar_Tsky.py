@@ -62,7 +62,7 @@ def pulsar_Tsky(parfile, freq=350*u.MHz, model='2008'):
             psr=SkyCoord(m.ELONG.value*u.deg,m.ELAT.value*u.deg,frame='pulsarecliptic')
         except:
             raise KeyError,'Cannot find RAJ,DECJ or ELONG,ELAT in:\n%s' % m.as_parfile()
-    T=source_Tsky(psr, freq=freq, model=model)
+    T=SkyCoord_Tsky(psr, freq=freq, model=model)
     return T
 
 def main():
