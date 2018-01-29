@@ -2,6 +2,7 @@
 pulsar-specific interface to the global sky model for computing sky temperatures
 
 Requires:
+ * astropy
  * global sky model python interface [pygsm](https://github.com/telegraphic/PyGSM)
  * pulsar timing interface [PINT](https://github.com/nanograv/PINT)
  
