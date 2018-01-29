@@ -8,6 +8,58 @@ import astropy
 from optparse import OptionParser
 import os,sys
 
+class GSModel:
+    """
+    class interface to GSM model
+    so that structures/data stay in memory
+    gsm=GSModel(freq=freq, model=model)
+
+    to use on astropy SkyCoord:
+    gsm.SkyCoord_Tsky(source)
+
+    to use on pulsar parfile:
+    gsm.pulsar_Tsky(parfile)
+    
+    """
+
+    def __init__(self, freq=350*u.MHz, model='2008'):
+        assert str(model) in ['2008','2016']
+
+        if not isinstance(freq, astropy.units.quantity.Quantity):
+            # assume MHz
+            freq=freq*u.MHz
+
+        if str(model)=='2008':
+            self.gsm = GlobalSkyModel()
+        elif str(model)=='2016':
+            self.gsm=GlobalSkyModel2016()
+        self.map=self.gsm.generate(freq.to(u.MHz).value)
+        self.freq=freq
+        self.model=model
+
+    def SkyCoord_Tsky(self, source):
+        T=healpy.pixelfunc.get_interp_val(self.map,
+                                          source.galactic.l.value,
+                                          source.galactic.b.value,
+                                          lonlat=True)
+        return T*u.K
+
+    def pulsar_Tsky(self, parfile):
+        m=models.get_model(parfile)
+        try:
+            psr=SkyCoord(m.RAJ.value,m.DECJ.value,unit='deg')
+        except:
+            try:
+                psr=SkyCoord(m.ELONG.value*u.deg,m.ELAT.value*u.deg,frame='pulsarecliptic')
+            except:
+                raise KeyError,'Cannot find RAJ,DECJ or ELONG,ELAT in:\n%s' % m.as_parfile()
+        return self.SkyCoord_Tsky(psr)
+
+
+##############################
+# convenience functions
+# provide a single interface
+##############################
 def SkyCoord_Tsky(source, freq=350*u.MHz, model='2008'):
     """
     T=SkyCoord_Tsky(source, freq=350*u.MHz)
@@ -21,23 +73,9 @@ def SkyCoord_Tsky(source, freq=350*u.MHz, model='2008'):
 
     returns sky temperature in K
     """
-    assert str(model) in ['2008','2016']
 
-    if not isinstance(freq, astropy.units.quantity.Quantity):
-        # assume MHz
-        freq=freq*u.MHz
-
-    if str(model)=='2008':
-        gsm = GlobalSkyModel()
-    elif str(model)=='2016':
-        gsm=GlobalSkyModel2016()
-    map=gsm.generate(freq.to(u.MHz).value)
-    T=healpy.pixelfunc.get_interp_val(map,
-                                      source.galactic.l.value,
-                                      source.galactic.b.value,
-                                      lonlat=True)
-    return T*u.K
-
+    gsm=GSModel(freq=freq, model=model)
+    return gsm.SkyCoord_Tsky(source)
 
 
 def pulsar_Tsky(parfile, freq=350*u.MHz, model='2008'):
@@ -53,17 +91,8 @@ def pulsar_Tsky(parfile, freq=350*u.MHz, model='2008'):
 
     returns sky temperature in K
     """
-
-    m=models.get_model(parfile)
-    try:
-        psr=SkyCoord(m.RAJ.value,m.DECJ.value,unit='deg')
-    except:
-        try:
-            psr=SkyCoord(m.ELONG.value*u.deg,m.ELAT.value*u.deg,frame='pulsarecliptic')
-        except:
-            raise KeyError,'Cannot find RAJ,DECJ or ELONG,ELAT in:\n%s' % m.as_parfile()
-    T=SkyCoord_Tsky(psr, freq=freq, model=model)
-    return T
+    gsm=GSModel(freq=freq, model=model)
+    return gsm.pulsar_Tsky(parfile)
 
 def main():
     
