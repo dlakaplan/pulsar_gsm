@@ -8,6 +8,38 @@ import astropy
 from optparse import OptionParser
 import os,sys
 
+def SkyCoord_Tsky(source, freq=350*u.MHz, model='2008'):
+    """
+    T=SkyCoord_Tsky(source, freq=350*u.MHz)
+    takes an astropy SkyCoord object and computes the sky temperature for that position
+    using pyGSM
+    scaled to the given frequency
+
+    If frequency has no units, MHz is assumed
+
+    model='2008' or '2016' for GSM2008 (Oliveira-Costa et al., 2008) or GSM2016 (Zheng et al., 2016)
+
+    returns sky temperature in K
+    """
+    assert str(model) in ['2008','2016']
+
+    if not isinstance(freq, astropy.units.quantity.Quantity):
+        # assume MHz
+        freq=freq*u.MHz
+
+    if str(model)=='2008':
+        gsm = GlobalSkyModel()
+    elif str(model)=='2016':
+        gsm=GlobalSkyModel2016()
+    map=gsm.generate(freq.to(u.MHz).value)
+    T=healpy.pixelfunc.get_interp_val(map,
+                                      source.galactic.l.value,
+                                      source.galactic.b.value,
+                                      lonlat=True)
+    return T*u.K
+
+
+
 def pulsar_Tsky(parfile, freq=350*u.MHz, model='2008'):
     """
     T=pulsar_Tsky(parfile, freq=350*u.MHz)
@@ -22,12 +54,6 @@ def pulsar_Tsky(parfile, freq=350*u.MHz, model='2008'):
     returns sky temperature in K
     """
 
-    assert str(model) in ['2008','2016']
-
-    if not isinstance(freq, astropy.units.quantity.Quantity):
-        # assume MHz
-        freq=freq*u.MHz
-
     m=models.get_model(parfile)
     try:
         psr=SkyCoord(m.RAJ.value,m.DECJ.value,unit='deg')
@@ -36,17 +62,8 @@ def pulsar_Tsky(parfile, freq=350*u.MHz, model='2008'):
             psr=SkyCoord(m.ELONG.value*u.deg,m.ELAT.value*u.deg,frame='pulsarecliptic')
         except:
             raise KeyError,'Cannot find RAJ,DECJ or ELONG,ELAT in:\n%s' % m.as_parfile()
-
-    if str(model)=='2008':
-        gsm = GlobalSkyModel()
-    elif str(model)=='2016':
-        gsm=GlobalSkyModel2016()
-    map=gsm.generate(freq.to(u.MHz).value)
-    T=healpy.pixelfunc.get_interp_val(map,
-                                      psr.galactic.l.value,
-                                      psr.galactic.b.value,
-                                      lonlat=True)
-    return T*u.K
+    T=source_Tsky(psr, freq=freq, model=model)
+    return T
 
 def main():
     
