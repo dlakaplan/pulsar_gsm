@@ -31,4 +31,12 @@ WARNING: Unrecognized parfile line 'CHI2R          0.0000 215' [pint.models.timi
 PSR J0038-25: 27.1 K (at 350 MHz)
 ```
  
+And in the python interface can use astropy coordinate objects too (which can be vectorized):
+```python
+from astropy.coordinates import SkyCoord
+gsm=pulsar_Tsky.GSModel()
+T=gsm.SkyCoord_Tsky(SkyCoord([1,2],[3,4],unit='deg'))
+```
+Note that now instead of using the convenience function above we are using the class interface so that the data will persist in memory for future calls.
+
 
